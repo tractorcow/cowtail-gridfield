@@ -1,10 +1,10 @@
 from django.conf.urls import url
 
-from . import views
+from .views import Create, Edit
 
 # Register page admin gridfield
-item = views.ItemHandler()
+app_name = 'cowtail_gridfield'
 urlpatterns = [
-    url(r'^grid/(?P<parts>[\w/]+)/create/$', item.create, name='cowtail_create'),
-    url(r'^grid/(?P<parts>[\w/]+)/(?P<itemid>\d+)/edit/$', item.edit, name='cowtail_edit'),
+    url(r'^grid/(?P<parts>[\w/]+)/add/$', Create.as_view(), name='create'),
+    url(r'^grid/(?P<parts>[\w/]+)/(?P<pk>\d+)/edit/$', Edit.as_view(), name='edit'),
 ]

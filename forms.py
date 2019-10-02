@@ -1,5 +1,7 @@
+from django.db.models import fields
 from django.db.models.fields.reverse_related import ForeignObjectRel
 from django.template.loader import render_to_string
+from modelcluster.fields import ChildObjectsDescriptor
 
 from wagtail.admin.edit_handlers import EditHandler
 
@@ -11,20 +13,36 @@ class CowTailPanel(EditHandler):
     template = 'cowtail/gridfield.html'
     label = None
     db_field: ForeignObjectRel = None
+    relation_list = None
+    isbound = False
+
+    # Types of fields that are good to display as summary
+    # Todo - Configurable summary fields per model / gridfield
+    summary_types = [
+        fields.AutoField,
+        fields.CharField,
+        fields.DateField,
+        fields.TextField,
+        fields.IntegerField,
+        fields.FloatField,
+        fields.TimeField,
+    ]
 
     def __init__(self, relation_name, heading='', label='', *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.relation_name = relation_name
         self.heading = heading or label
         self.label = label
+        self.isbound = False
 
     # List of field names this grid should display
     # Excludes final "actions" column
     def summary_fields(self):
         # todo Get fields from this
-        print(self.instance)
-        print(self.db_field.related_model)
-        pass
+        for field in self.db_field.related_model._meta.fields:
+            for type in self.summary_types:
+                if isinstance(field, type):
+                    yield field
 
     def clone_kwargs(self):
         kwargs = super().clone_kwargs()
@@ -39,17 +57,29 @@ class CowTailPanel(EditHandler):
         manager = getattr(self.model, self.relation_name)
         self.db_field = manager.rel
 
+    def on_instance_bound(self):
+        self.relation_list = getattr(self.instance, self.relation_name)
+
     def bind_to(self, instance=None, **kwargs):
         if instance is not None:
             self.instance = instance
         return super(CowTailPanel, self).bind_to(instance=instance, **kwargs)
 
     def render(self):
-        self.summary_fields()
+        columns = self.summary_fields()
+
+        items = []
+        if self.relation_list is not None:
+            items = self.relation_list.all()
+
+        # todo - wrap items into inline panel
+
+        # print([column for column in columns])
         # todo get items from self.instance
         return render_to_string(self.template, {
             'self': self,
-            'items': []  # todo wrap each item in an inline panel widget
+            'columns': columns,
+            'items': [], # items
         })
 
 
